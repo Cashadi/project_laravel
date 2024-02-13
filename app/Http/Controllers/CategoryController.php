@@ -12,7 +12,13 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        //
+        $category = Category::select('id', 'name');
+
+        $category = $category->get();
+
+        return response()->json([
+            'data' => $category,
+        ]);
     }
 
     /**
@@ -30,7 +36,7 @@ class CategoryController extends Controller
     {
         // buat category untuk product
         $validated = $request->validate([
-            "name" => "required",
+            "name" => "required|string",
         ]);
 
         // untuk mendapatkan id users dengan role penjual

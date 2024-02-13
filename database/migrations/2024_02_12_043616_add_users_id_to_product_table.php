@@ -11,12 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('hdr_carts', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('users_id');
-
-            $table->foreign('users_id')->references('id')->on('users');
-            $table->timestamps();
+        Schema::table('product', function (Blueprint $table) {
+            $table->unsignedBigInteger('user_id')->nullable(false);
+            $table->foreign('user_id')->references('id')->on('users');
         });
     }
 
@@ -25,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('hdr_carts');
+        Schema::table('product', function (Blueprint $table) {
+            //
+        });
     }
 };
