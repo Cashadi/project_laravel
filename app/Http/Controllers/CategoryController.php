@@ -77,7 +77,31 @@ class CategoryController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string'
+        ]);
+
+        $user = auth()->user()->role;
+
+        if ($user != 'penjual') {
+            return response()->json([
+                'message' => 'You are not a seller',
+            ], 404);
+        }
+
+        $data = Category::where('id', $id);
+
+        if($data == null) {
+            return response()->json([
+                'messsage' => 'category not found',
+            ], 404);
+        }
+
+        $data->update($validated);
+
+        return response()->json([
+            'message' => 'update category is successfully',
+        ], 200);
     }
 
     /**
@@ -85,6 +109,24 @@ class CategoryController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $user = auth()->user()->role;
+
+        if ($user != "penjual") {
+            return response()->json([
+                'message' => 'You are not a seller',
+            ], 404);
+        }
+
+        $data = Category::find($id);
+
+        if($data == null) {
+            return response()->json([
+                'messsage' => 'Soory, category not found',
+            ], 404);
+        }
+
+        $data->delete();
+
+        return response()->noContent();
     }
 }

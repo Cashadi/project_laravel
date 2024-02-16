@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('product', function (Blueprint $table) {
-            $table->unsignedBigInteger('user_id')->nullable(false);
+        Schema::create('checkout', function (Blueprint $table) {
+            $table->id();
+            $table->timestamps();
+            $table->unsignedBigInteger('user_id');
+            $table->integer('Total');
+
             $table->foreign('user_id')->references('id')->on('users');
         });
     }
@@ -22,8 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('product', function (Blueprint $table) {
-            //
-        });
+        Schema::dropIfExists('checkout');
     }
 };

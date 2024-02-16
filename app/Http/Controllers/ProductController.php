@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\ProductCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
@@ -14,7 +16,7 @@ class ProductController extends Controller
 
         // kondisi untuk menampilkan users_id sesuai role nya yang login
         if ($user == "penjual") {
-            $products = Product::select('id', 'name', 'description', 'price', 'image', 'category_id')->where('user_id', auth()->id());
+            $products = Product::select('id', 'name', 'price', 'stock', 'image', )->where('user_id', auth()->id());
 
             $products = $products->get();
 
@@ -22,7 +24,7 @@ class ProductController extends Controller
                 'data' => $products,
             ], 200);
         } else if ($user == 'pembeli') {
-            $products = Product::select('id', 'name', 'price', 'image');
+            $products = Product::select('id', 'name', 'price', 'stock', 'image');
 
             $products = $products->get();
 
@@ -51,7 +53,9 @@ class ProductController extends Controller
             'description' => 'required|string',
             'price' => 'required|integer',
             'image' => 'required|string',
-            'category_id' => 'required|string',
+            'stock' => 'required|integer',
+            'categories' => 'array|required',
+            'category.*.id' => 'required',
         ]);
 
         // untuk mendapatkan id users dengan role penjual
@@ -65,8 +69,31 @@ class ProductController extends Controller
         }
 
         $validated['user_id'] = auth()->id();
+        $categories = $validated['categories'];
+        unset($validated['categories']);
+        $result = null;
 
-        // create::create($validated);
+        DB::beginTransaction();
+        try {
+            $result = Product::create($validated);
+
+            $createCategories = [];
+            foreach ($categories as $category) {
+                $dt = [
+                    'product_id' => $result->id,
+                    'category_id' => $category['id']
+                ];
+                $createCategories[] = ProductCategory::create($dt);
+            }
+
+            $result->categories = $createCategories;
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json([
+                'message' => $th->getMessage(),
+            ], 503);
+        }
 
         return response()->json([
             'message' => 'Upload your product succesfully'
@@ -95,37 +122,66 @@ class ProductController extends Controller
     public function update(Request $request, string $id)
     {
         $validated = $request->validate([
-            'name' => 'nullable',
-            'description' => 'nullable',
-            'price' => 'nullable',
-            'image' => 'nullable',
-            'category_id' => 'nullable',
+            'name' => 'nullable|string',
+            'description' => 'nullable|string',
+            'price' => 'nullable|integer',
+            'image' => 'nullable|string',
+            'stock' => 'nullable|integer',
+            'categories' => 'array|nullable',
+            'category.*.id' => 'nullable',
         ]);
 
+        // untuk mendapatkan id user dengan role penjual
         $user = auth()->user()->role;
 
-        if ($user == 'penjual') {
-            $data = Product::where('id', $id)->where("user_id", auth()->id())->first();
-
-            // validasi untuk tag berdasarkan id
-            if ($data == null) {
-                return response()->json([
-                    'messsage' => 'product not found',
-                ], 404);
-            }
-
-            $data->update($validated);
-
-            return response()->json([
-                'message' => 'update your product succesfully',
-            ], 200);
-        } else if ($user == 'pembeli') {
-
+        // validasi hanya users_id role penjual saja yang bisa update products
+        if ($user != 'penjual') {
             return response()->json([
                 'message' => 'You are not a seller',
             ], 404);
-
         }
+
+        // mendapatkan user_id yang sesuai yang punya products nya
+        $data = Product::where('id', $id)->where("user_id", auth()->id())->first();
+
+        $categories = $validated['categories'];
+        unset($validated['categories']);
+        $result = null;
+
+        // check apakah products nya ada di database
+        if ($data == null) {
+            return response()->json([
+                'messsage' => 'products not found',
+            ], 404);
+        }
+
+        DB::beginTransaction();
+        try {
+            $result = $data->update($validated);
+
+            ProductCategory::where('product_id', $id)->delete();
+            $createCatagories = [];
+            foreach ($categories as $category) {
+                $dt = [
+                    'product_id' => $data->id,
+                    'category_id' => $category['id']
+                ];
+
+                $createCatagories[] = ProductCategory::create($dt);
+            }
+
+            $data->categories = $createCatagories;
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json([
+                'message'=> $th->getMessage(),
+            ], 503);
+        }
+
+        return response()->json([
+            'message' => 'Update your product succesfully'
+        ], 201);
     }
 
     /**
@@ -133,25 +189,25 @@ class ProductController extends Controller
      */
     public function destroy(string $id)
     {
-        $user = auth()->user()->role;
+        $data = Product::where('id', $id)->where("user_id", auth()->id())->first();
 
-        if ($user == 'penjual') {
-            $data = Product::where('id', $id)->where("user_id", auth()->id())->first();
+        ProductCategory::where('product_id', $id)->delete();
 
-            if ($data == null) {
-                return response()->json([
-                    'messsage' => 'product not found',
-                ], 404);
-            }
-
-            $data->delete();
-
-            return response()->noContent();
-        } else if ($user == 'pembeli') {
+        if ($data == null) {
             return response()->json([
-                'message' => 'You are not a seller',
+                'messsage' => 'product not found',
             ], 404);
         }
+
+        $result = $data->delete();
+
+        if ($result == false) {
+            return response()->json([
+                'message' => 'product is false',
+            ], 404);
+        }
+
+        return response()->noContent();
 
     }
 }

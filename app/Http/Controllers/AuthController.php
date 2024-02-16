@@ -39,14 +39,13 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => 'required|string',
         ]);
 
         $data = [
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role,
+            'role' => 'pembeli',
         ];
 
         $user = User::create($data);
@@ -62,13 +61,14 @@ class AuthController extends Controller
             'name' => 'required|string|max:225',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => 'required|string',
         ]);
+
+        $validated['role'] = 'penjual';
 
         $admin = auth()->user()->role;
 
         if ($admin == 'penjual') {
-
+            
             User::create($validated);
 
             return response()->json([
