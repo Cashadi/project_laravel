@@ -11,15 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('carts', function (Blueprint $table) {
+        Schema::create('dtl_checkout', function (Blueprint $table) {
             $table->id();
             $table->timestamps();
-            $table->unsignedBigInteger('user_id')->nullable(false);
-            $table->unsignedBigInteger('product_id')->nullable(false);
+            $table->unsignedBigInteger('hdr_checkout_id');
+            $table->unsignedBigInteger('product_id');
             $table->integer('quantity');
-            $table->integer('total_price');
+            $table->integer('price');
 
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->foreign('hdr_checkout_id')->references('id')->on('hdr_checkout');
             $table->foreign('product_id')->references('id')->on('products');
         });
     }
@@ -29,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('carts');
+        Schema::dropIfExists('dtl_checkout');
     }
 };

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\HdrCheckout;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use Illuminate\Http\Request;
@@ -12,19 +13,38 @@ class ProductController extends Controller
     // tampilkan semua product tapi hanya users_id (penjual)
     public function index()
     {
-        $user = auth()->user()->role;
+        $user = auth()->user();
 
         // kondisi untuk menampilkan users_id sesuai role nya yang login
-        if ($user == "penjual") {
-            $products = Product::select('id', 'name', 'price', 'stock', 'image', )->where('user_id', auth()->id());
+        if ($user->role == "penjual") {
+            $filterProductByCategory = request()->query('search');
+            $products = Product::select('products.name', 'products.price', 'products.stock', 'products.image')
+                ->join('products_categories', 'products.id', '=', 'products_categories.product_id')
+                ->join('categories', 'products_categories.category_id', '=', 'categories.id')
+                ->where('products.user_id', auth()->id());
+
+            if ($filterProductByCategory != null) {
+                $products->where('categories.name', $filterProductByCategory);
+            }
+
+            $products->groupBy('products.name', 'products.price', 'products.stock', 'products.image');
 
             $products = $products->get();
 
             return response()->json([
                 'data' => $products,
             ], 200);
-        } else if ($user == 'pembeli') {
-            $products = Product::select('id', 'name', 'price', 'stock', 'image');
+
+        } else if ($user->role == 'pembeli') {
+            $filterProductByCategory = request()->query('search');
+            $products = Product::select('products.id', 'products.name', 'products.price', 'products.stock', 'products.image')
+            ->join('products_categories', 'products.id', '=', 'products_categories.product_id')
+            ->join('categories', 'products_categories.category_id', '=', 'categories.id');
+
+            if ($filterProductByCategory != null) {
+                $products->where('categories.name', $filterProductByCategory);
+            }
+            $products->groupBy('products.id', 'products.name', 'products.price', 'products.stock', 'products.image');
 
             $products = $products->get();
 
@@ -59,10 +79,10 @@ class ProductController extends Controller
         ]);
 
         // untuk mendapatkan id users dengan role penjual
-        $user = auth()->user()->role;
+        $user = auth()->user();
 
         // validasi hanya users_id yang role penjual saja yang bisa bikin products
-        if ($user != 'penjual') {
+        if ($user->role != 'penjual') {
             return response()->json([
                 'message' => 'You are not a seller',
             ], 404);
@@ -76,6 +96,9 @@ class ProductController extends Controller
         DB::beginTransaction();
         try {
             $result = Product::create($validated);
+            // HdrCheckout::create([
+
+            // ])
 
             $createCategories = [];
             foreach ($categories as $category) {
@@ -132,10 +155,10 @@ class ProductController extends Controller
         ]);
 
         // untuk mendapatkan id user dengan role penjual
-        $user = auth()->user()->role;
+        $user = auth()->user();
 
         // validasi hanya users_id role penjual saja yang bisa update products
-        if ($user != 'penjual') {
+        if ($user->role != 'penjual') {
             return response()->json([
                 'message' => 'You are not a seller',
             ], 404);
@@ -175,7 +198,7 @@ class ProductController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
             return response()->json([
-                'message'=> $th->getMessage(),
+                'message' => $th->getMessage(),
             ], 503);
         }
 

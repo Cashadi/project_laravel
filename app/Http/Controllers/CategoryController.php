@@ -40,10 +40,10 @@ class CategoryController extends Controller
         ]);
 
         // untuk mendapatkan id users dengan role penjual
-        $user = auth()->user()->role;
+        $user = auth()->user();
 
         // validasi hanya users_id yang role penjual saja yang bisa bikin category
-        if ($user != "penjual") {
+        if ($user->role != "penjual") {
             return response()->json([
                 'message' => 'You are not a seller',
             ], 404);
@@ -81,15 +81,15 @@ class CategoryController extends Controller
             'name' => 'required|string'
         ]);
 
-        $user = auth()->user()->role;
+        $user = auth()->user();
 
-        if ($user != 'penjual') {
+        if ($user->role != 'penjual') {
             return response()->json([
                 'message' => 'You are not a seller',
             ], 404);
         }
 
-        $data = Category::where('id', $id);
+        $data = Category::find( $id );
 
         if($data == null) {
             return response()->json([
@@ -109,9 +109,9 @@ class CategoryController extends Controller
      */
     public function destroy(string $id)
     {
-        $user = auth()->user()->role;
+        $user = auth()->user();
 
-        if ($user != "penjual") {
+        if ($user->role != "penjual") {
             return response()->json([
                 'message' => 'You are not a seller',
             ], 404);
