@@ -24,7 +24,7 @@ class ProductController extends Controller
                 ->where('products.user_id', auth()->id());
 
             if ($filterProductByCategory != null) {
-                $products->where('categories.name', $filterProductByCategory);
+                $products->where('categories.id', $filterProductByCategory);
             }
 
             $products->groupBy('products.name', 'products.price', 'products.stock', 'products.image');
@@ -42,7 +42,7 @@ class ProductController extends Controller
             ->join('categories', 'products_categories.category_id', '=', 'categories.id');
 
             if ($filterProductByCategory != null) {
-                $products->where('categories.name', $filterProductByCategory);
+                $products->where('categories.id', $filterProductByCategory);
             }
             $products->groupBy('products.id', 'products.name', 'products.price', 'products.stock', 'products.image');
 
@@ -96,9 +96,6 @@ class ProductController extends Controller
         DB::beginTransaction();
         try {
             $result = Product::create($validated);
-            // HdrCheckout::create([
-
-            // ])
 
             $createCategories = [];
             foreach ($categories as $category) {

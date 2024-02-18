@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ProductController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -47,5 +48,9 @@ Route::middleware(['auth:api'])->group (
         Route::get('/carts', [CartController::class,'index'])->name('carts.index');
         Route::put('/cart/product/{id}', [CartController::class,'update'])->name('carts.update');
         Route::delete('/cart/product/{id}', [CartController::class,'destroy'])->name('carts.destroy');
+
+        // checkout
+        Route::post('/checkout', [CheckoutController::class,'store'])->name('checkout.store');
+        Route::get('/history', [CheckoutController::class,'index'])->name('history.index');
     }
 );

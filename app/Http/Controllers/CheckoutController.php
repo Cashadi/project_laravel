@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cart;
+use App\Models\DtlCheckout;
 use App\Models\HdrCheckout;
 use App\Models\Product;
 use Illuminate\Http\Request;
@@ -14,7 +16,12 @@ class CheckoutController extends Controller
      */
     public function index()
     {
-        //
+        $history = HdrCheckout::select('total', 'created_at as Date')->where('user_id', auth()->id())->get();
+
+        return response()->json([
+            'History' => $history,
+        ], 200);
+
     }
 
     /**
@@ -32,23 +39,71 @@ class CheckoutController extends Controller
     {
         $validated = $request->validate([
             'products' => 'array|required',
-            'product.*.id' => 'required',
-            'quantity' => 'integer|required',
+            'products.*.id' => 'required',
+            'products.*.quantity' => 'integer|nullable',
         ]);
-
-        // $user = auth()->user();
-
-        // $priceProduct = Product::where('id', $request->product_id)->get()->first();
-        // $validated['total_price'] = $priceProduct->price * $request->quantity;
+        $products = $validated['products'];
 
         DB::beginTransaction();
         try {
             $hdrcheckout = HdrCheckout::create([
-                'user_id' => auth()->user(),
+                'user_id' => auth()->user()->id,
                 'total' => 0,
             ]);
+
+            $total_price = 0;
+
+            foreach ($products as $product) {
+                if (isset($product['quantity'])) {
+                    $dt = [
+                        'hdr_checkout_id' => $hdrcheckout->id,
+                        'product_id' => $product['id'],
+                        'quantity' => $product['quantity'],
+                    ];
+                } else {
+                    $cart = Cart::where('product_id', $product['id'])->first();
+
+                    $dt = [
+                        'hdr_checkout_id' => $hdrcheckout->id,
+                        'product_id' => $product['id'],
+                        'quantity' => $cart->quantity,
+                    ];
+                }
+
+                $detailProduct = Product::where('id', $product['id'])->get()->first();
+                $dt['price'] = $detailProduct->price * $dt['quantity'];
+
+                $stock = $detailProduct->stock;
+
+                $detailProduct->update([
+                    'stock' => $stock - $dt['quantity'],
+                ]);
+
+                DtlCheckout::create($dt);
+
+                $cart = Cart::where('product_id', $product['id'])
+                    ->where('user_id', auth()->id())
+                    ->first();
+
+                if ($cart) {
+                    $cart->delete();
+                }
+
+                $total_price += $dt['price'];
+            }
+
+            $hdrcheckout->update(['total' => $total_price]);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json([
+                'message' => $th->getMessage(),
+            ], 503);
         }
 
+        return response()->json([
+            'message' => 'checkout your product succesfully'
+        ], 201);
     }
 
     /**
